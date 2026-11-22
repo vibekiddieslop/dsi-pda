@@ -1,0 +1,61 @@
+# Builds load.bin (ARM7 code that runs from VRAM bank C) with the BlocksDS
+# toolchain. Replaces the devkitARM Makefile for this project.
+
+BLOCKSDS            ?= /opt/wonderful/thirdparty/blocksds/core
+WONDERFUL_TOOLCHAIN ?= /opt/wonderful
+PREFIX              := $(WONDERFUL_TOOLCHAIN)/toolchain/gcc-arm-none-eabi/bin/arm-none-eabi-
+
+CC      := $(PREFIX)gcc
+OBJCOPY := $(PREFIX)objcopy
+
+BUILD   := build
+OUT     ?= load.bin
+
+ARCH    := -mthumb -mthumb-interwork -mcpu=arm7tdmi -mtune=arm7tdmi
+INCLUDE := -I$(BUILD) -Isource -I$(BLOCKSDS)/libs/libnds/include
+CFLAGS  := -g -Wall -Os -fomit-frame-pointer -ffast-math -ffreestanding \
+           -fno-builtin -fno-tree-loop-distribute-patterns $(ARCH) $(INCLUDE) -DARM7
+ASFLAGS := -g $(ARCH) $(INCLUDE) -DARM7 -x assembler-with-cpp
+LDFLAGS := -nostartfiles -nostdlib -T load.ld -Wl,--no-warn-rwx-segments \
+           -Wl,-Map,$(BUILD)/load.map $(ARCH)
+
+CFILES  := $(wildcard source/*.c)
+SFILES  := $(wildcard source/*.s)
+OFILES  := $(patsubst source/%.c,$(BUILD)/%.o,$(CFILES)) \
+           $(patsubst source/%.s,$(BUILD)/%.o,$(SFILES))
+
+.PHONY: all clean
+
+all: $(OUT)
+
+$(OUT): $(BUILD)/load.elf
+	$(OBJCOPY) -O binary $< $@
+	@echo built $(OUT): $$(stat -c %s $@) bytes
+
+$(BUILD)/load.elf: $(OFILES) load.ld
+	$(CC) $(LDFLAGS) $(OFILES) -lgcc -o $@
+
+$(BUILD)/%.o: source/%.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# *.arm.c runs on the ARM9 from a passme loop (ARM state): build it as ARM,
+# matching devkitARM's ds_rules.
+$(BUILD)/%.arm.o: source/%.arm.c | $(BUILD)
+	$(CC) $(filter-out -mthumb,$(CFLAGS)) -marm -c $< -o $@
+
+$(BUILD)/arm9mpu_reset.o: $(BUILD)/mpu_reset.bin
+
+$(BUILD)/%.o: source/%.s | $(BUILD)
+	$(CC) $(ASFLAGS) -c $< -o $@
+
+$(BUILD)/mpu_reset.bin: $(BUILD)/mpu_reset.elf
+	$(OBJCOPY) -O binary $< $@
+
+$(BUILD)/mpu_reset.elf: arm9code/mpu_reset.s | $(BUILD)
+	$(CC) $(ASFLAGS) -Ttext=0 -nostartfiles -nostdlib $< -o $@
+
+$(BUILD):
+	mkdir -p $@
+
+clean:
+	rm -rf $(BUILD) load.bin

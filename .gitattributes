@@ -1,0 +1,5 @@
+# Sources are built in WSL: keep LF so bash and make read them unchanged.
+* text=auto eol=lf
+*.bmp binary
+*.nds binary
+*.bin binary
