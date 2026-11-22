@@ -367,7 +367,9 @@ the files the PDA wrote.
 ## License
 
 The launcher uses the devkitPro nds-bootloader and the nds-hb-menu bootstub
-(`third_party/`), which are GPLv2 or later, so this program is GPL as well.
+(`third_party/`), which are GPLv2 or later, so this program is GPL as well:
+it is released under the GNU General Public License v3.0 (see
+[LICENSE](LICENSE)). The third-party code keeps its own licenses.
 The word list for the swipe keyboard comes from SCOWL (see
 `third_party/scowl/COPYRIGHT`).
 
